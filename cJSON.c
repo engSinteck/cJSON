@@ -57,6 +57,7 @@
 #endif
 
 #include "cJSON.h"
+#include "FreeRTOS.h"
 
 /* define our own boolean type */
 #ifdef true
@@ -175,8 +176,8 @@ static void * CJSON_CDECL internal_realloc(void *pointer, size_t size)
     return realloc(pointer, size);
 }
 #else
-#define internal_malloc malloc
-#define internal_free free
+#define internal_malloc pvPortMalloc
+#define internal_free vPortFree
 #define internal_realloc realloc
 #endif
 
@@ -211,19 +212,19 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
     if (hooks == NULL)
     {
         /* Reset hooks */
-        global_hooks.allocate = malloc;
-        global_hooks.deallocate = free;
+        global_hooks.allocate = pvPortMalloc;
+        global_hooks.deallocate = vPortFree;
         global_hooks.reallocate = realloc;
         return;
     }
 
-    global_hooks.allocate = malloc;
+    global_hooks.allocate = pvPortMalloc;
     if (hooks->malloc_fn != NULL)
     {
         global_hooks.allocate = hooks->malloc_fn;
     }
 
-    global_hooks.deallocate = free;
+    global_hooks.deallocate = vPortFree;
     if (hooks->free_fn != NULL)
     {
         global_hooks.deallocate = hooks->free_fn;
@@ -231,7 +232,7 @@ CJSON_PUBLIC(void) cJSON_InitHooks(cJSON_Hooks* hooks)
 
     /* use realloc only if both free and malloc are used */
     global_hooks.reallocate = NULL;
-    if ((global_hooks.allocate == malloc) && (global_hooks.deallocate == free))
+    if ((global_hooks.allocate == pvPortMalloc) && (global_hooks.deallocate == vPortFree))
     {
         global_hooks.reallocate = realloc;
     }
